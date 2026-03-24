@@ -1,4 +1,6 @@
 #include "Interpolation/chebyshev_grid.hh"
+#include<stdexcept>
+#include<iostream>
 
 namespace Interpolation
 {
@@ -44,6 +46,86 @@ namespace Chebyshev
         }
         
 
+    };
+
+    double StandardGrid::poli_weight(double t, size_t j) const{
+
+        if(std::abs(t - this->_tj[j]) < 1.0e-15) {
+                return 1.;
+            }
+
+        double den = 0;
+        for(size_t i=0; i< this->_betaj.size(); i++){
+            if(std::abs(t - this->_tj[i]) < 1.0e-15) {
+                return 0.;
+            }
+            den += (this->_betaj[i]/(t-this->_tj[i]));
+        }
+
+        double b_i=this->_betaj[j]/(t-this->_tj[j])/den;
+
+        return b_i;
+    };
+
+    double StandardGrid::poli_weight(double t, size_t j, double den) const{
+
+        if(std::abs(t - this->_tj[j]) < 1.0e-15) {
+                return 1.;
+            }
+
+        double b_i=this->_betaj[j]/(t-this->_tj[j])/den;
+
+        return b_i;
+
+    };
+
+    double StandardGrid::interpolate(double t, const vector_d &fj, size_t start, size_t end) const{
+
+        if(t<-1 || t>1){
+            throw std::domain_error("StandardGrid::interpolate: t must be in [-1, 1]");
+        }
+        if(end-start != _p){
+            throw std::domain_error("StandardGrid::interpolate: end-start must be equal to p");
+        }
+
+        /*
+        double p = 0;
+        for(size_t i=0; i<=this->_p; i++){
+
+            double b=this->poli_weight(t, i);
+
+            p+=fj[i+start]*b;
+        }
+
+        return p;
+        */
+
+        double den = 0;
+        for(size_t i=0; i< this->_betaj.size(); i++){
+            if(std::abs(t - this->_tj[i]) < 1.0e-15) {
+                return fj[i+start];
+            }
+            den += (this->_betaj[i]/(t-this->_tj[i]));
+        }
+
+        double p = 0;
+        for(size_t i=0; i<=this->_p; i++){
+
+            p += fj[i+start] * this->poli_weight(t, i, den);
+        }
+
+        return p;
+
+    };
+
+    vector_d StandardGrid::discretize(const std::function<double(double)> &fnc) const{
+
+        vector_d fj(_p + 1, 0.);
+        for(size_t i=0; i<=_p; i++){
+            fj[i]=fnc(_tj[i]);
+        }
+
+        return fj;
     };
 } // namespace Chebyshev
 } // namespace Interpolation
