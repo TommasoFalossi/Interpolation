@@ -27,6 +27,7 @@ StandardGrid::StandardGrid(size_t p)
          _Dij[j][k] = -(_betaj[k] / _betaj[j]) / (_tj[j] - _tj[k]);
       }
    }
+   /// line
 }
 
 } // namespace Chebyshev
