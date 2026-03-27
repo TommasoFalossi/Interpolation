@@ -127,5 +127,56 @@ namespace Chebyshev
 
         return fj;
     };
+
+
+    double StandardGrid::interpolate_der(double t, const vector_d &fj, size_t start, size_t end) const{
+
+        if(t<-1 || t>1){
+            throw std::domain_error("StandardGrid::interpolate: t must be in [-1, 1]");
+        }
+        if(end-start != _p){
+            throw std::domain_error("StandardGrid::interpolate: end-start must be equal to p");
+        }
+
+
+        double p = 0;
+        for(size_t i=start, j=0; i<=end; i++, j++){
+            p+=fj[i]*poli_weight_der(t, j);
+        }
+
+        return p;
+    };
+
+    double StandardGrid::poli_weight_der(double t, size_t j) const{
+        double l=0;
+        for(size_t i = 0 ; i <= _p; i++){
+            l+= poli_weight(t, i)* _Dij[j][i];
+        }
+
+        return l;
+    };
+
+    double StandardGrid::poli_weight_der(double t, size_t j, double den) const{
+        double l=0;
+        for(size_t i = 0 ; i <= _p; i++){
+            l+= poli_weight(t, i, den)* _Dij[j][i];
+        }
+
+        return l;
+    };
+
+    void StandardGrid::apply_D(vector_d &fj, size_t start, size_t end) const{
+
+        vector_d f_tilde = fj;
+
+        for(size_t i=start; i<=end; i++){
+            for(size_t j=start; j<=end; j++){
+                fj[i] = 0;
+            }
+        }
+
+
+    }
+
 } // namespace Chebyshev
 } // namespace Interpolation
