@@ -1,1 +1,0 @@
-/usr/bin/c++ -O3 -DNDEBUG CMakeFiles/test_empty.dir/test_empty.cc.o -o test_empty  -Wl,-rpath,/home/tommaso/ComputationalMethods/Interpolation/tests/lib -lm ../lib/libInterpolation.so 
