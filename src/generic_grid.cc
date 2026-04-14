@@ -169,7 +169,12 @@ double StandardGrid::interpolate(double t, const vector_d &fj, size_t start, siz
          sum += poli_weight_sbf(t, j, den) * fj[i];
       }
       return sum;
+      break;
    }
+
+   default:
+    throw std::invalid_argument("Error");
+    break;
    }
 }
 
@@ -223,6 +228,11 @@ double StandardGrid::interpolate(double t, const vector_d &fj, size_t start, siz
       }
       return sum;
    }
+
+   default:
+    throw std::invalid_argument("Error");
+    break;
+    
    }
 }
 
