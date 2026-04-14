@@ -165,10 +165,7 @@ struct Grid1D {
             throw std::invalid_argument("Cannot interpolate");
          }
       }
-<<<<<<< HEAD
 
-=======
->>>>>>> 1baa7b08f9db4bb8c2df28451e33fe68dcba136e
       return res;
    }
 
