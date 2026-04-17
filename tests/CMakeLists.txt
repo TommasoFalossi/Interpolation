@@ -9,6 +9,7 @@ set(TEST_SOURCES
    test_first_discr.cc
    test_chebyshev.cc
    test_generic.cc
+   test_grid_1d.cc
 )
 
 foreach(TEST_SOURCE ${TEST_SOURCES})
