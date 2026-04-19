@@ -40,7 +40,19 @@ public:
                             = details::identity_maps::tis_d,
                             std::function<double(double)> to_p_space = details::identity_maps::tps,
                             std::function<double(double)> to_p_space_der
-                            = details::identity_maps::tps_d);
+                            = details::identity_maps::tps_d)
+                            {
+                              grid_sizes = g_size;
+                              to_inter_space = to_i_space;
+                              to_i_space_der = to_i_space_der;
+                              to_phys_space = to_p_space;
+                              to_phys_space_der = to_p_space_der;
+
+                              for(size_t i = 0; i<inter.size()-1; i++){
+                                 intervals_phys.push_back(std::pair{inter[i], inter[i+1]});
+                                 intervals.push_back(std::pair{to_inter_space(inter[i]), to_inter_space(inter[i+1])});
+                              }
+                            };
 
    /// Intervals in interpolation space
    std::vector<std::pair<double, double>> intervals;
@@ -268,7 +280,7 @@ struct Grid1D {
    SingleDiscretizationInfo _d_info;
    /// Stored StandardGrids
    std::map<size_t, Chebyshev::StandardGrid> _stored_grids;
-   /// The intepolating weights
+   /// The interpolating weights
    std::vector<std::function<double(double, const Chebyshev::StandardGrid &)>> _weights;
    /// Derivative of the interpolating weights (dw / du)
    std::vector<std::function<double(double, const Chebyshev::StandardGrid &)>> _weights_der;
