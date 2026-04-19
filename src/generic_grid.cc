@@ -1,130 +1,126 @@
 #include "Interpolation/generic_grid.hh"
-#include<stdexcept>
+#include <stdexcept>
+#include <algorithm>
 
 namespace Interpolation
 {
 namespace Generic
 {
+StandardGrid::StandardGrid(const vector_d &input) : _tj(input)
+{
+   if (input.size() <= 1) {
+      throw std::invalid_argument(
+          "[Generic::StandardGrid]: input vector cannot be of less than two elements.");
+   }
+   std::sort(_tj.begin(), _tj.end());
 
+   if (_tj.front() < -1.) {
+      throw std::runtime_error("Invalid vector");
+   }
 
+   if (_tj.back() > +1.) {
+      throw std::runtime_error("Invalid vector");
+   }
 
-    StandardGrid::StandardGrid(const vector_d &input):  _tj(input){
-        if(input.size()<1){
-            throw std::invalid_argument("[Generic::StandardGrid]: input vector cannot be of less than two elements.");
-        }
+   if (std::abs(_tj.front() - (-1.)) > 1.0e-12) {
+      _tj.insert(_tj.begin(), -1.);
+   } else {
+      _tj.front() = -1.;
+   }
+   if (std::abs(_tj.back() - 1.) > 1.0e-12) {
+      _tj.push_back(+1.);
+   } else {
+      _tj.back() = +1.;
+   }
 
-        std::sort(_tj.begin(), _tj.end());
+   _p = _tj.size() - 1;
+   _lambdaj.resize(_p + 1, 1.);
 
-        if (_tj.front() < -1.) {
-            throw std::runtime_error("Invalid vector");
-        }
+   for (size_t j = 0; j <= _p; j++) {
+      for (size_t i = 0; i < j; i++) {
+         _lambdaj[j] *= _tj[j] - _tj[i];
+      }
+      for (size_t i = j + 1; i <= _p; i++) {
+         _lambdaj[j] *= _tj[j] - _tj[i];
+      }
+      _lambdaj[j] = 1. / _lambdaj[j];
+   }
 
-        if (_tj.back() > +1.) {
-            throw std::runtime_error("Invalid vector");
-        }
+   /// Derivative matrix
+   _Dij.resize(_p + 1, std::vector<double>(_p + 1, 0.));
 
-        if (std::abs(_tj.front() - (-1.)) > 1.0e-12) {
-            _tj.insert(_tj.begin(), -1.);
-        } else {
-            _tj.front() = -1.;
-        }
-        if (std::abs(_tj.back() - 1.) > 1.0e-12) {
-            _tj.push_back(+1.);
-        } else {
-            _tj.back() = +1.;
-        }
+   for (size_t i = 0; i <= _p; i++) {
+      /// Diagonal elements
+      for (size_t n = 0; n < i; n++) {
+         _Dij[i][i] += 1. / (_tj[i] - _tj[n]);
+      }
+      for (size_t n = i + 1; n <= _p; n++) {
+         _Dij[i][i] += 1. / (_tj[i] - _tj[n]);
+      }
 
-        _p = _tj.size();
-        _lambdaj.resize(_p + 1, 1.);
+      for (size_t j = 0; j <= _p; j++) {
+         if (j == i) continue;
 
-        for (size_t j = 0; j <= _p; j++) {
-            for (size_t i = 0; i < j; i++) {
-                _lambdaj[j] *= _tj[j] - _tj[i];
-            }
-            for (size_t i = j + 1; i <= _p; i++) {
-                _lambdaj[j] *= _tj[j] - _tj[i];
-            }
-            _lambdaj[j] = 1. / _lambdaj[j];
-        }
+         _Dij[i][j] = 1. / (_tj[i] - _tj[j]);
+         for (size_t k = 0; k <= _p; k++) {
+            if (k == i || k == j) continue;
+            _Dij[i][j] *= (_tj[j] - _tj[k]) / (_tj[i] - _tj[k]);
+         }
+      }
+   }
+}
 
-        /// Derivative matrix
-        _Dij.resize(_p + 1, std::vector<double>(_p + 1, 0.));
+StandardGrid::StandardGrid(const std::function<double(size_t, size_t)> &fnc, size_t p) : _p(p)
+{
+   if (std::abs(fnc(0, p) - (-1.)) > 1.0e-12) {
+      throw std::invalid_argument("[Generic::StandardGrid] lower bound of the grid must be -1");
+   }
+   if (std::abs(fnc(p, p) - (+1.)) > 1.0e-12) {
+      throw std::invalid_argument("[Generic::StandardGrid] upper bound of the grid must be +1");
+   }
 
-        for (size_t i = 0; i <= _p; i++) {
-            /// Diagonal elements
-            for (size_t n = 0; n < i; n++) {
-                _Dij[i][i] += 1. / (_tj[i] - _tj[n]);
-            }
-            for (size_t n = i + 1; n <= _p; n++) {
-                _Dij[i][i] += 1. / (_tj[i] - _tj[n]);
-            }
+   _tj.resize(_p + 1, 0.);
+   _tj.front() = -1.;
+   _tj.back()  = +1.;
+   for (size_t i = 1; i < _p; i++) {
+      _tj[i] = fnc(i, p);
+   }
 
-            for (size_t j = 0; j <= _p; j++) {
-                if (j == i) continue;
+   _lambdaj.resize(_p + 1, 1.);
 
-                _Dij[i][j] = 1. / (_tj[i] - _tj[j]);
-                for (size_t k = 0; k <= _p; k++) {
-                    if (k == i || k == j) continue;
-                    _Dij[i][j] *= (_tj[j] - _tj[k]) / (_tj[i] - _tj[k]);
-                }
-            }
-        }
+   for (size_t j = 0; j <= _p; j++) {
+      for (size_t i = 0; i < j; i++) {
+         _lambdaj[j] *= _tj[j] - _tj[i];
+      }
+      for (size_t i = j + 1; i <= _p; i++) {
+         _lambdaj[j] *= _tj[j] - _tj[i];
+      }
+      _lambdaj[j] = 1. / _lambdaj[j];
+   }
 
-    };
+   /// Derivative matrix
+   _Dij.resize(_p + 1, std::vector<double>(_p + 1, 0.));
 
-    StandardGrid::StandardGrid(const std::function<double(size_t, size_t)> &fnc, size_t p): _p(p){
+   for (size_t i = 0; i <= _p; i++) {
+      /// Diagonal elements
+      for (size_t n = 0; n < i; n++) {
+         _Dij[i][i] += 1. / (_tj[i] - _tj[n]);
+      }
+      for (size_t n = i + 1; n <= _p; n++) {
+         _Dij[i][i] += 1. / (_tj[i] - _tj[n]);
+      }
 
-        if (std::abs(fnc(0, p) - (-1.)) > 1.0e-12) {
-            throw std::invalid_argument("[Generic::StandardGrid] lower bound of the grid must be -1");
-        }
-        if (std::abs(fnc(p, p) - (+1.)) > 1.0e-12) {
-            throw std::invalid_argument("[Generic::StandardGrid] upper bound of the grid must be +1");
-        }
+      for (size_t j = 0; j <= _p; j++) {
+         if (j == i) continue;
 
-        _tj.resize(_p + 1, 0.);
-        _tj.front() = -1.;
-        _tj.back()  = +1.;
-        for (size_t i = 1; i < _p; i++) {
-            _tj[i] = fnc(i, p);
-        }
-
-        _lambdaj.resize(_p + 1, 1.);
-
-        for (size_t j = 0; j <= _p; j++) {
-            for (size_t i = 0; i < j; i++) {
-                _lambdaj[j] *= _tj[j] - _tj[i];
-            }
-            for (size_t i = j + 1; i <= _p; i++) {
-                _lambdaj[j] *= _tj[j] - _tj[i];
-            }
-            _lambdaj[j] = 1. / _lambdaj[j];
-        }
-
-        /// Derivative matrix
-        _Dij.resize(_p + 1, std::vector<double>(_p + 1, 0.));
-
-        for (size_t i = 0; i <= _p; i++) {
-            /// Diagonal elements
-            for (size_t n = 0; n < i; n++) {
-                _Dij[i][i] += 1. / (_tj[i] - _tj[n]);
-            }
-            for (size_t n = i + 1; n <= _p; n++) {
-                _Dij[i][i] += 1. / (_tj[i] - _tj[n]);
-            }
-
-            for (size_t j = 0; j <= _p; j++) {
-                if (j == i) continue;
-
-                _Dij[i][j] = 1. / (_tj[i] - _tj[j]);
-                for (size_t k = 0; k <= _p; k++) {
-                    if (k == i || k == j) continue;
-                    _Dij[i][j] *= (_tj[j] - _tj[k]) / (_tj[i] - _tj[k]);
-                }
-            }
-        }
-
-    };
-
+         _Dij[i][j] = 1. / (_tj[i] - _tj[j]);
+         for (size_t k = 0; k <= _p; k++) {
+            if (k == i || k == j) continue;
+            _Dij[i][j] *= (_tj[j] - _tj[k]) / (_tj[i] - _tj[k]);
+         }
+      }
+   }
+}
 
 double StandardGrid::interpolate(double t, const vector_d &fj, size_t start, size_t end,
                                  STRATEGY str) const
@@ -169,16 +165,11 @@ double StandardGrid::interpolate(double t, const vector_d &fj, size_t start, siz
          sum += poli_weight_sbf(t, j, den) * fj[i];
       }
       return sum;
-      break;
    }
-
-   default:
-    throw std::invalid_argument("Error");
-    break;
    }
 }
 
-    double StandardGrid::interpolate_der(double t, const vector_d &fj, size_t start, size_t end,
+double StandardGrid::interpolate_der(double t, const vector_d &fj, size_t start, size_t end,
                                      STRATEGY str) const
 {
    if (t < -1 || t > 1 || (end - start) != _p) {
@@ -228,11 +219,6 @@ double StandardGrid::interpolate(double t, const vector_d &fj, size_t start, siz
       }
       return sum;
    }
-
-   default:
-    throw std::invalid_argument("Error");
-    break;
-    
    }
 }
 
@@ -390,5 +376,6 @@ vector_d StandardGrid::discretize(const std::function<double(double)> &fnc) cons
    }
    return result;
 }
+
 } // namespace Generic
 } // namespace Interpolation
